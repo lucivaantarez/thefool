@@ -1,31 +1,23 @@
+-- LANA UNIVERSAL ANCHOR BEACON V3.5
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
+local Player = game.Players.LocalPlayer
 
--- *** UPDATE THIS LINK FROM CLOUDFLARE ***
-local HUB_URL = "https://YOUR-URL.trycloudflare.com/api/ping"
-local MY_ROLE = "PRIMARY" -- Change to SECONDARY for your 2nd account
--- ***************************************
+local function sendPing()
+    local data = {
+        userid = tostring(Player.UserId),
+        jobid = game.JobId,
+        role = "ANCHOR" -- Hub maps the package automatically
+    }
+    
+    pcall(function()
+        HttpService:PostAsync("http://YOUR_CLOUDFLARE_URL/api/ping", HttpService:JSONEncode(data))
+        -- If on Swarm Node, also ping local
+        HttpService:GetAsync("http://127.0.0.1:5000/local_ping?hopper_id=" .. data.jobid)
+    end)
+end
 
-if not game:IsLoaded() then game.Loaded:Wait() end
-task.wait(5)
-local http_request = syn and syn.request or http and http.request or http_request or fluxus and fluxus.request or request
-
-task.spawn(function()
-    while true do
-        local payload = {
-            userid = tostring(Players.LocalPlayer.UserId), 
-            jobid = tostring(game.JobId), 
-            role = MY_ROLE, 
-            players = #Players:GetPlayers()
-        }
-        pcall(function() 
-            http_request({
-                Url = HUB_URL, 
-                Method = "POST", 
-                Headers = {["Content-Type"] = "application/json"}, 
-                Body = HttpService:JSONEncode(payload)
-            }) 
-        end)
-        task.wait(60)
+spawn(function()
+    while task.wait(30) do
+        sendPing()
     end
 end)
