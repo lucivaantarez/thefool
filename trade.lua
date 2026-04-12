@@ -3,7 +3,7 @@ setfpscap(10)
 
 getgenv().sailorPieceConfig = {  
     OPTIMIZATION = false, 
-    AUTO_KICK = faalse,
+    AUTO_KICK = false,
     TRADE_USERNAME = { "aduhhhbrisik" },
     TRADE_ITEM = {
         "Abyss Sigil",
