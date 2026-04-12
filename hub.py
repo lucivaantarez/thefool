@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uvicorn
 import logging
 
-# Silence logs to keep the UI clean
+# Silence logs
 logging.getLogger("uvicorn").setLevel(logging.CRITICAL)
 logging.getLogger("uvicorn.access").setLevel(logging.CRITICAL)
 
@@ -14,20 +14,13 @@ CONFIG_FILE = "config.json"
 DB_FILE = "swarm.db"
 
 # ANSI Bold Colors
-G = '\033[1;32m' # Green
-C = '\033[1;36m' # Cyan
-W = '\033[1;37m' # White
-R = '\033[1;31m' # Red
-Y = '\033[1;33m' # Gold
-X = '\033[0m'    # Reset
+G, C, W, R, Y, X = '\033[1;32m', '\033[1;36m', '\033[1;37m', '\033[1;31m', '\033[1;33m', '\033[0m'
 
 config = {
     "target_timer": 300, 
     "base_timer": 1800, 
     "primary_base": "None", 
-    "secondary_base": "None",
-    "primary_pkg": "com.roblox.client",
-    "secondary_pkg": "com.roblox.client"
+    "primary_pkg": "com.roblox.client"
 }
 
 if os.path.exists(CONFIG_FILE):
@@ -84,16 +77,16 @@ def draw_header():
     ██║   ██╔══██║██╔══╝      ██╔══╝  ██║   ██║██║   ██║██║     
     ██║   ██║  ██║███████╗    ██║     ╚██████╔╝╚██████╔╝███████╗
     ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝{X}""")
-    print(f" {W}[{X} {G}SYSTEM: HUB_COMMAND_CENTER{X} {W}]{X}\n")
+    print(f" {W}[{X} {G}SYSTEM: THE FOOL'S COURT{X} {W}]{X}\n")
 
 def draw_static_menu():
     draw_header()
     print(f" {W}[{X}{G} STATUS {X}{W}]{X} : {R}OFFLINE{X}")
     print(f" {W}--------------------------------------------------{X}")
-    print(f" {W}[{X}{C} 1 {X}{W}]{X} Target Dwell  : {W}{config['target_timer']}s{X}")
-    print(f" {W}[{X}{C} 2 {X}{W}]{X} Rest Dwell    : {W}{config['base_timer']}s{X}")
-    print(f" {W}[{X}{C} 4 {X}{W}]{X} Primary Base  : {W}{config['primary_base'][:25]}...{X}")
-    print(f" {W}[{X}{C} 7 {X}{W}]{X} Pkg Main      : {W}{config['primary_pkg']}{X}")
+    print(f" {W}[{X}{C} 1 {X}{W}]{X} The Fool's Hop     : {W}{config['target_timer']}s{X}")
+    print(f" {W}[{X}{C} 2 {X}{W}]{X} Fool's Rest Time   : {W}{config['base_timer']}s{X}")
+    print(f" {W}[{X}{C} 3 {X}{W}]{X} Primary Homebase   : {W}{config['primary_base'][:20]}...{X}")
+    print(f" {W}[{X}{C} 4 {X}{W}]{X} Roblox Package     : {W}{config['primary_pkg']}{X}")
     print(f" {W}--------------------------------------------------{X}")
     print(f" {W}[{X}{G} S {X}{W}]{X} {G}AWAKEN THE FOOL{X}")
     print(f" {W}[{X}{R} Q {X}{W}]{X} {R}TERMINATE{X}\n")
@@ -109,7 +102,8 @@ def draw_live_dashboard():
         print(f" {W}[{X}{C} TARGET {X}{W}]{X} : {G}{active} Active Servers{X}")
         print(f" {W}--------------------------------------------------{X}")
         print(f" {C}LIVE INTERCEPT SIGNALS:{X}")
-        for log in list(comm_log):
+        log_list = list(comm_log)
+        for log in log_list:
             print(f" {W}>{X} {log}")
         print(f"\n {W}Press {X}{R}'s'{X}{W} + Enter to kill server.{X}")
 
@@ -119,13 +113,24 @@ def interactive_menu():
         cmd = input(f" {G}Directive:{X} ").strip().upper()
         if cmd == 'S': break
         if cmd == 'Q': sys.exit()
-        if cmd == 'E' or cmd in '12478':
-            opt = input(f" {C}Change value (1,2,4,7):{X} ")
-            if opt == '1': config['target_timer'] = int(input("Seconds: "))
-            if opt == '2': config['base_timer'] = int(input("Seconds: "))
-            if opt == '4': config['primary_base'] = input("Link: ").strip()
-            if opt == '7': config['primary_pkg'] = input("Pkg: ").strip()
+        
+        try:
+            if cmd == '1':
+                val = input(f" {C}New Hop Time (s):{X} ")
+                if val: config['target_timer'] = int(val)
+            elif cmd == '2':
+                val = input(f" {C}New Rest Time (s):{X} ")
+                if val: config['base_timer'] = int(val)
+            elif cmd == '3':
+                val = input(f" {C}New Homebase Link:{X} ").strip()
+                if val: config['primary_base'] = val
+            elif cmd == '4':
+                val = input(f" {C}New Package Name:{X} ").strip()
+                if val: config['primary_pkg'] = val
             save_config()
+        except ValueError:
+            print(f" {R}Error: Number required.{X}")
+            time.sleep(1)
 
 if __name__ == "__main__":
     interactive_menu()
