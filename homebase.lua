@@ -1,5 +1,4 @@
 local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com" 
-local LOCAL_HUB = "http://127.0.0.1:5000" 
 
 local HttpService = game:GetService("HttpService")
 local Player = game.Players.LocalPlayer
@@ -13,7 +12,6 @@ local function sendPing()
     local encodedData = HttpService:JSONEncode(data)
 
     pcall(function() HttpService:PostAsync(HUB_URL .. "/api/ping", encodedData) end)
-    pcall(function() HttpService:GetAsync(LOCAL_HUB .. "/local_ping?hopper_id=" .. data.jobid) end)
 end
 
 task.spawn(function()
