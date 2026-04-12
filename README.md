@@ -1,21 +1,18 @@
-# 🃏 The Fool's Court: C2 Architecture
+# The Fool's Court: Swarm Architecture
 
-An elite Command & Control (C2) architecture designed to manage a limitless swarm of automated Roblox clients. Powered by Python, FastAPI, and SQLite, with a secure bridge via Ngrok.
+A highly optimized, multi-node Command & Control architecture designed for Roblox automation across Redfinger cloud environments (Android 10/Termux). It utilizes a centralized API hub to route worker nodes (Hoppers) to designated targets in real-time, completely bypassing traditional executor limitations.
 
-## ⚙️ Core Architecture
-* **The Master Hub (`hub.py`):** The central brain. Tracks server JobIds, manages cooldowns, enforces a 3-minute healing Grace Period, and actively garbage-collects dead endpoints.
-* **The Monitor (`monitor.py`):** A lightweight, read-only terminal dashboard for remote viewing.
-* **The Hunter (`hunter.lua`):** The primary execution bot that receives the target `JobId` and executes trades.
-* **The Swarm (`beacon.lua`):** Zero-UI, lightweight background scripts that securely report live `JobId` data to the Master Hub every 60 seconds.
+## Core Features
+* **Zero-Touch Updates:** Workers pull their routing logic directly from this repository dynamically.
+* **Hardware Watchdog:** Sub-Hubs monitor local Android memory limits and forcefully reboot frozen Roblox packages.
+* **Intelligent Routing:** Eliminates API rate limits via the SQLite SQLite target/rest queue.
+* **Cloudflare Integrated:** Natively uses Cloudflare Quick Tunnels for external API exposure.
 
-## 🚀 Ignition Sequence
+---
 
-### 1. The Brain (Redfinger Cloud Phone)
-Run this block in Termux to install the Hub and create the `fool` command. 
-*Note: Type `fool` to launch the Hub. It will automatically update from GitHub, lock the wakestate, and launch the Ngrok tunnel silently.*
+## 1. Installation
+
+This system requires zero manual configuration. Run the single-line injector on your target Redfinger devices inside Termux.
 
 ```bash
-pkg update && pkg install git ngrok -y
-git clone [https://github.com/lucivaantarez/thefool.git](https://github.com/lucivaantarez/thefool.git) ~/thefool
-echo "alias fool='cd ~/thefool && git pull origin main && termux-wake-lock && nohup ngrok http --domain=intersectant-unaffrightedly-somer.ngrok-free.dev 8000 > /dev/null 2>&1 & python hub.py'" >> ~/.bashrc
-source ~/.bashrc
+curl -sSL [https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh](https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh) > setup.sh && bash setup.sh && source ~/.bashrc && rm setup.sh
