@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import uvicorn
 import logging
 
+# Silence logs to keep the UI clean
 logging.getLogger("uvicorn").setLevel(logging.CRITICAL)
 logging.getLogger("uvicorn.access").setLevel(logging.CRITICAL)
 
@@ -12,12 +13,21 @@ app = FastAPI()
 CONFIG_FILE = "config.json"
 DB_FILE = "swarm.db"
 
+# ANSI Bold Colors
+G = '\033[1;32m' # Green
+C = '\033[1;36m' # Cyan
+W = '\033[1;37m' # White
+R = '\033[1;31m' # Red
+Y = '\033[1;33m' # Gold
+X = '\033[0m'    # Reset
+
 config = {
     "target_timer": 300, 
     "base_timer": 1800, 
-    "army_per_device": 2, 
-    "primary_base": "https://www.roblox.com/share?code=...", 
-    "secondary_base": "None"
+    "primary_base": "None", 
+    "secondary_base": "None",
+    "primary_pkg": "com.roblox.client",
+    "secondary_pkg": "com.roblox.client"
 }
 
 if os.path.exists(CONFIG_FILE):
@@ -30,113 +40,96 @@ def save_config():
 
 conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
-cursor.executescript("""
-    CREATE TABLE IF NOT EXISTS targets (userid TEXT PRIMARY KEY, jobid TEXT, last_seen REAL);
-    CREATE TABLE IF NOT EXISTS anchors (role TEXT PRIMARY KEY, jobid TEXT, players INTEGER);
-    CREATE TABLE IF NOT EXISTS hoppers (userid TEXT PRIMARY KEY, assigned_jobid TEXT, mission TEXT);
-""")
+cursor.executescript("CREATE TABLE IF NOT EXISTS targets (userid TEXT PRIMARY KEY, jobid TEXT, last_seen REAL);")
 conn.commit()
 
-comm_log = deque(maxlen=10)
+comm_log = deque(maxlen=8)
 def add_log(msg): comm_log.append(msg)
 
 start_time = time.time()
-PURPLE, WHITE, CYAN, RED, RESET = '\033[95m', '\033[97m', '\033[96m', '\033[91m', '\033[0m'
 
 class PingData(BaseModel):
     userid: str
     jobid: str
     role: str
-    players: int = 0
 
 @app.post("/api/ping")
 def handle_ping(data: PingData):
-    now = time.time()
-    if data.role in ["PRIMARY", "SECONDARY"]:
-        cursor.execute("REPLACE INTO anchors (role, jobid, players) VALUES (?, ?, ?)", (data.role, data.jobid, data.players))
-    elif data.role == "TARGET":
-        cursor.execute("REPLACE INTO targets (userid, jobid, last_seen) VALUES (?, ?, ?)", (data.userid, data.jobid, now))
-    conn.commit()
-    return {"status": "Logged"}
+    if data.role == "TARGET":
+        cursor.execute("REPLACE INTO targets (userid, jobid, last_seen) VALUES (?, ?, ?)", (data.userid, data.jobid, time.time()))
+        conn.commit()
+    return {"status": "ok"}
 
 @app.get("/api/mission")
-def get_mission(userid: str, current_jobid: str):
+def get_mission(userid: str):
     cursor.execute("SELECT userid, jobid FROM targets ORDER BY last_seen ASC LIMIT 1")
     target = cursor.fetchone()
-    short_user = userid[:6]
     if target:
-        add_log(f"> Hopper_{short_user} : Hunting in Server [{target[1][:8]}]")
+        add_log(f"{G}HUNTING{X} -> Target detected in [{target[1][:8]}]")
         return {"action": "EXECUTE", "mission": "HUNT", "target_userid": target[0], "dwell_time": config["target_timer"]}
-    else:
-        add_log(f"> Hopper_{short_user} : Resting at Homebase.")
-        return {"action": "EXECUTE", "mission": "REST", "target_userid": "null", "dwell_time": config["base_timer"]}
-
-def clear_screen(): os.system('clear')
-
-def draw_static_menu():
-    clear_screen()
-    print(PURPLE + "+===================================================+\n|                                                   |\n|          T H E  F O O L ' S  C O U R T            |\n|                                                   |\n+===================================================+" + RESET)
-    print(WHITE + f"|  SYSTEM STATUS          :  {CYAN}[ OFFLINE ]{WHITE}            |\n+---------------------------------------------------+")
-    print(f"|  [1] The Fool's Hop     :  {config['target_timer']} seconds")
-    print(f"|  [2] Fool's Rest Time   :  {config['base_timer']} seconds")
-    print(f"|  [3] Army/Device        :  {config['army_per_device']}")
-    print(f"|  [4] Primary Homebase   :  {config['primary_base'][:20]}...")
-    print(f"|  [5] Secondary Homebase :  {config['secondary_base'][:20]}...")
-    print(PURPLE + "+===================================================+" + RESET)
-    print(WHITE + "|  [E] Configuration                                |\n|  [S] Awaken The Fool                              |\n|  [Q] Kill The Fool                                |\n" + PURPLE + "+---------------------------------------------------+" + RESET)
-
-def interactive_menu():
-    while True:
-        draw_static_menu()
-        choice = input(WHITE + "Select an action: " + RESET).strip().upper()
-        if choice == 'Q': sys.exit(0)
-        elif choice == 'S': break 
-        elif choice == 'E':
-            opt = input(CYAN + "Which setting to edit (1-5)? " + RESET)
-            if opt == '1': config['target_timer'] = int(input("New Hop Time (seconds): "))
-            if opt == '2': config['base_timer'] = int(input("New Rest Time (seconds): "))
-            if opt == '3': config['army_per_device'] = int(input("New Army/Device: "))
-            if opt == '4': config['primary_base'] = input("New Primary Base Link: ").strip()
-            if opt == '5': config['secondary_base'] = input("New Secondary Base Link: ").strip()
-            save_config()
+    add_log(f"{Y}IDLE{X} -> No targets. Sending to Homebase.")
+    return {"action": "EXECUTE", "mission": "REST", "target_userid": "null", "dwell_time": config["base_timer"]}
 
 def get_uptime():
     h, rem = divmod(int(time.time() - start_time), 3600)
     m, s = divmod(rem, 60)
-    return f"{h:02d}h {m:02d}m {s:02d}s"
+    return f"{h}h {m}m {s}s"
+
+def draw_header():
+    os.system('clear')
+    print(f"""{G}
+ ████████╗██╗  ██╗███████╗    ███████╗ ██████╗  ██████╗ ██╗     
+ ╚══██╔══╝██║  ██║██╔════╝    ██╔════╝██╔═══██╗██╔═══██╗██║     
+    ██║   ███████║█████╗      █████╗  ██║   ██║██║   ██║██║     
+    ██║   ██╔══██║██╔══╝      ██╔══╝  ██║   ██║██║   ██║██║     
+    ██║   ██║  ██║███████╗    ██║     ╚██████╔╝╚██████╔╝███████╗
+    ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝{X}""")
+    print(f" {W}[{X} {G}SYSTEM: HUB_COMMAND_CENTER{X} {W}]{X}\n")
+
+def draw_static_menu():
+    draw_header()
+    print(f" {W}[{X}{G} STATUS {X}{W}]{X} : {R}OFFLINE{X}")
+    print(f" {W}--------------------------------------------------{X}")
+    print(f" {W}[{X}{C} 1 {X}{W}]{X} Target Dwell  : {W}{config['target_timer']}s{X}")
+    print(f" {W}[{X}{C} 2 {X}{W}]{X} Rest Dwell    : {W}{config['base_timer']}s{X}")
+    print(f" {W}[{X}{C} 4 {X}{W}]{X} Primary Base  : {W}{config['primary_base'][:25]}...{X}")
+    print(f" {W}[{X}{C} 7 {X}{W}]{X} Pkg Main      : {W}{config['primary_pkg']}{X}")
+    print(f" {W}--------------------------------------------------{X}")
+    print(f" {W}[{X}{G} S {X}{W}]{X} {G}AWAKEN THE FOOL{X}")
+    print(f" {W}[{X}{R} Q {X}{W}]{X} {R}TERMINATE{X}\n")
 
 def draw_live_dashboard():
     while True:
         time.sleep(1)
-        clear_screen()
+        draw_header()
         cursor.execute("SELECT COUNT(*) FROM targets")
-        active_universe = cursor.fetchone()[0]
-        print(PURPLE + "+===================================================+\n|                                                   |\n|          T H E  F O O L ' S  C O U R T            |\n|                                                   |\n+===================================================+" + RESET)
-        print(WHITE + f"|  SYSTEM STATUS          :  {CYAN}[ AWAKENED ]{WHITE}           |\n|  NETWORK UPTIME         :  {CYAN}{get_uptime():<21}{WHITE}|\n|  ACTIVE UNIVERSE        :  {CYAN}{active_universe:<4} TARGETS{WHITE}          |\n" + PURPLE + "+---------------------------------------------------+" + RESET)
-        print(WHITE + "|  [ LIVE COMM LINK ] (Last 10 Events)              |")
-        log_list = list(comm_log)
-        for i in range(10): print(f"| {log_list[i][:45]:<49} |" if i < len(log_list) else f"| {' ':<49} |")
-        print(PURPLE + "+===================================================+" + RESET)
-        print(WHITE + "Type " + CYAN + "'s'" + WHITE + " and press [ENTER] to Kill The Fool." + RESET)
+        active = cursor.fetchone()[0]
+        print(f" {W}[{X}{G} STATUS {X}{W}]{X} : {G}ACTIVE{X}")
+        print(f" {W}[{X}{C} UPTIME {X}{W}]{X} : {W}{get_uptime()}{X}")
+        print(f" {W}[{X}{C} TARGET {X}{W}]{X} : {G}{active} Active Servers{X}")
+        print(f" {W}--------------------------------------------------{X}")
+        print(f" {C}LIVE INTERCEPT SIGNALS:{X}")
+        for log in list(comm_log):
+            print(f" {W}>{X} {log}")
+        print(f"\n {W}Press {X}{R}'s'{X}{W} + Enter to kill server.{X}")
 
-def listen_for_kill():
+def interactive_menu():
     while True:
-        if input().strip().lower() == 's':
-            print(RED + "\n[SYSTEM] Assassinating the Hub. Saving Data..." + RESET)
-            os._exit(0)
+        draw_static_menu()
+        cmd = input(f" {G}Directive:{X} ").strip().upper()
+        if cmd == 'S': break
+        if cmd == 'Q': sys.exit()
+        if cmd == 'E' or cmd in '12478':
+            opt = input(f" {C}Change value (1,2,4,7):{X} ")
+            if opt == '1': config['target_timer'] = int(input("Seconds: "))
+            if opt == '2': config['base_timer'] = int(input("Seconds: "))
+            if opt == '4': config['primary_base'] = input("Link: ").strip()
+            if opt == '7': config['primary_pkg'] = input("Pkg: ").strip()
+            save_config()
 
 if __name__ == "__main__":
     interactive_menu()
-    clear_screen()
-    print(PURPLE + "[SYSTEM] Opening the Void... Awaken The Fool." + RESET)
-    
-    if config.get("primary_base") and config["primary_base"] != "None":
-        os.system(f'am start -a android.intent.action.VIEW -d "{config["primary_base"]}" com.roblox.client > /dev/null 2>&1')
-        time.sleep(3) 
-        
-    if config.get("secondary_base") and config["secondary_base"] != "None":
-        os.system(f'am start -a android.intent.action.VIEW -d "{config["secondary_base"]}" com.dualspace.roblox > /dev/null 2>&1')
-
+    if config["primary_base"] != "None":
+        os.system(f'am start -a android.intent.action.VIEW -d "{config["primary_base"]}" {config["primary_pkg"]} > /dev/null 2>&1')
     threading.Thread(target=draw_live_dashboard, daemon=True).start()
-    threading.Thread(target=listen_for_kill, daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=8000)
