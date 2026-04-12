@@ -10,7 +10,7 @@ logging.getLogger("uvicorn.access").setLevel(logging.CRITICAL)
 app = FastAPI(); CONFIG_FILE = "sub_config.json"
 G, C, W, R, Y, X = '\033[1;32m', '\033[1;36m', '\033[1;37m', '\033[1;31m', '\033[1;33m', '\033[0m'
 
-config = {"target_packages": ["com.roblox.client"], "crash_timeout": 300, "search_filter": "com.lana"}
+config = {"target_packages": ["com.roblox.client"], "crash_timeout": 300, "search_filter": "com.roblox"}
 
 if os.path.exists(CONFIG_FILE):
     try:
@@ -30,7 +30,7 @@ def add_log(msg): watchdog_log.append(msg)
 def draw_header(status="OFFLINE"):
     os.system('clear')
     print(f"{G}  ████████╗██╗  ██╗███████╗    ███████╗ ██████╗  ██████╗ ██╗\n  ╚══██╔══╝██║  ██║██╔════╝    ██╔════╝██╔═══██╗██╔═══██╗██║\n     ██║   ███████║█████╗      █████╗  ██║   ██║██║   ██║██║\n     ██║   ██╔══██║██╔══╝      ██╔══╝  ██║   ██║██║   ██║██║\n     ██║   ██║  ██║███████╗    ██║     ╚██████╔╝╚██████╔╝███████╗\n     ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝{X}")
-    print(f" {W}[{X} {C}SYSTEM: SWARM_WORKER_V3.5{X} {W}]{X} : {G if status=='ARMED' else R}{status}{X}\n")
+    print(f" {W}[{X} {C}SYSTEM: SWARM_WORKER_V3.6{X} {W}]{X} : {G if status=='ARMED' else R}{status}{X}\n")
 
 def scan_packages():
     draw_header("CONFIG")
