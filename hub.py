@@ -118,7 +118,7 @@ def draw_live():
         time.sleep(1)
         draw_header("ACTIVE")
         cursor.execute("SELECT COUNT(*) FROM targets")
-        print(f" {W}[{X}{C} TARGETS {X}{W}]{X} : {G}{cursor.fetchone()[0]} Signals{X}\n {W}[{X}{C} ANCHORS {X}{W}]{X} : {G}{len(config['active_pkgs'])} Protected{X}\n {W}--------------------------------------------------{X}\n {C}LANA LIVE INTERCEPT:{X}")
+        print(f" {W}[{X}{C} TARGETS {X}{W}]{X} : {G}{cursor.fetchone()[0]} Signals\n {W}[{X}{C} ANCHORS {X}{W}]{X} : {G}{len(config['active_pkgs'])} Protected\n {W}--------------------------------------------------{X}\n {C}LANA LIVE INTERCEPT:{X}")
         for log in list(comm_log): print(f" {W}>{X} {log}")
         print(f"\n {W}Press {X}{R}'s'{X}{W} + Enter to Terminate.{X}")
 
