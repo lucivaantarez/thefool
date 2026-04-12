@@ -25,7 +25,9 @@ config = {
 }
 
 if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "r") as f: config.update(json.load(f))
+    with open(CONFIG_FILE, "r") as f:
+        try: config.update(json.load(f))
+        except: pass
 else:
     with open(CONFIG_FILE, "w") as f: json.dump(config, f, indent=4)
 
@@ -64,6 +66,11 @@ def get_mission(userid: str):
     add_log(f"{Y}IDLE{X} -> No targets. Maintaining Homebase.")
     return {"action": "EXECUTE", "mission": "REST", "target_userid": "null", "dwell_time": config["base_timer"]}
 
+def get_uptime():
+    h, rem = divmod(int(time.time() - start_time), 3600)
+    m, s = divmod(rem, 60)
+    return f"{h}h {m}m {s}s"
+
 def scan_for_packages():
     print(f"\n {C}Scanning environment for prefix: {W}{config['search_filter']}{X}")
     raw = os.popen(f"pm list packages | grep {config['search_filter']}").read()
@@ -85,14 +92,15 @@ def scan_for_packages():
         if choice == 'all':
             selected = packages
         elif '-' in choice:
-            start, end = map(int, choice.split('-'))
+            parts = choice.split('-')
+            start, end = int(parts[0]), int(parts[1])
             selected = packages[start-1:end]
         elif ',' in choice:
-            indices = map(int, choice.split(','))
-            selected = [packages[i-1] for i in indices]
+            indices = choice.split(',')
+            selected = [packages[int(i)-1] for i in indices]
         else:
             selected = [packages[int(choice)-1]]
-        return selected
+        return selected if selected else config["active_pkgs"]
     except:
         print(f" {R}Invalid selection logic. Keeping current.{X}")
         time.sleep(1)
@@ -100,13 +108,14 @@ def scan_for_packages():
 
 def draw_header():
     os.system('clear')
-    print(f"""{G}
+    # Raw string used to prevent backslash interpretation errors
+    print(r" " + G + r"""
  ████████╗██╗  ██╗███████╗    ███████╗ ██████╗  ██████╗ ██╗     
  ╚══██╔══╝██║  ██║██╔════╝    ██╔════╝██╔═══██╗██╔═══██╗██║     
     ██║   ███████║█████╗      █████╗  ██║   ██║██║   ██║██║     
     ██║   ██╔══██║██╔══╝      ██╔══╝  ██║   ██║██║   ██║██║     
     ██║   ██║  ██║███████╗    ██║     ╚██████╔╝╚██████╔╝███████╗
-    ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝{X}""")
+    ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝      ╚═════╝  ╚═════╝ ╚══════╝""" + X)
     print(f" {W}[{X} {G}SYSTEM: THE FOOL'S COURT{X} {W}]{X}\n")
 
 def draw_static_menu():
@@ -133,7 +142,8 @@ def draw_live_dashboard():
         print(f" {W}[{X}{C} ANCHORS{X}{W}]{X} : {G}{len(config['active_pkgs'])} Primary Instances{X}")
         print(f" {W}--------------------------------------------------{X}")
         print(f" {C}LIVE INTERCEPT SIGNALS:{X}")
-        for log in list(comm_log):
+        log_list = list(comm_log)
+        for log in log_list:
             print(f" {W}>{X} {log}")
         print(f"\n {W}Press {X}{R}'s'{X}{W} + Enter to kill server.{X}")
 
@@ -166,7 +176,6 @@ def interactive_menu():
 
 if __name__ == "__main__":
     interactive_menu()
-    # Batch Launch all selected Homebase instances
     if config["primary_base"] != "None":
         for pkg in config["active_pkgs"]:
             add_log(f"{C}LAUNCHING{X} -> {pkg}")
@@ -174,4 +183,4 @@ if __name__ == "__main__":
             time.sleep(2)
             
     threading.Thread(target=draw_live_dashboard, daemon=True).start()
-    uvicorn.run(app
+    uvicorn.run(app, host="0.0.0.0", port=8000)    uvicorn.run(app
