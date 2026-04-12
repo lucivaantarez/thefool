@@ -76,11 +76,12 @@ def launch_instance(pkg, index):
     bounds = get_bounds(index)
     link = config.get("primary_base", "None")
     
-    # If no link, just open the app. If link exists, force it into the Roblox Activity.
+    # Using your original bulletproof Monkey command
     if link == "None" or link == "":
-        cmd = f'am start -n {pkg}/com.roblox.client.ActivityMain'
+        cmd = f"monkey -p {pkg} -c android.intent.category.LAUNCHER 1"
     else:
-        cmd = f'am start -n {pkg}/com.roblox.client.ActivityMain -a android.intent.action.VIEW -d "{link}"'
+        # If a link is used, we let Android auto-resolve the activity (No hardcoded .ActivityMain)
+        cmd = f'am start -a android.intent.action.VIEW -d "{link}" {pkg}'
         
     if bounds and config["window_mode"] != "Full":
         cmd = cmd.replace('am start', f'am start --bounds "{bounds}"')
