@@ -1,51 +1,38 @@
--- THE FOOL'S COURT: WATCHER V3.6
--- MISSION: TARGET INTERCEPTION & LOCAL GUARD
-
-local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com" -- CLOUDFLARE LINK
-local LOCAL_GUARD = "http://127.0.0.1:5000/local_ping" -- NO TUNNEL NEEDED
+local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com" 
+local LOCAL_HUB = "http://127.0.0.1:5000" 
 
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
+local Player = game.Players.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 
-local MY_ID = tostring(Players.LocalPlayer.UserId)
-local CURRENT_JOB = tostring(game.JobId)
-local PLACE_ID = game.PlaceId
+local function sendPing()
+    local data = {
+        userid = tostring(Player.UserId),
+        jobid = game.JobId,
+        role = "ANCHOR"
+    }
+    local encodedData = HttpService:JSONEncode(data)
 
--- [1] THE LOCAL HEARTBEAT (Prevents Sentinel Relaunch)
-task.spawn(function()
-    while true do
-        pcall(function()
-            HttpService:GetAsync(LOCAL_GUARD .. "?hopper_id=" .. MY_ID)
-        end)
-        task.wait(30)
-    end
-end)
+    pcall(function() HttpService:PostAsync(HUB_URL .. "/api/ping", encodedData) end)
+    pcall(function() HttpService:GetAsync(LOCAL_HUB .. "/local_ping?hopper_id=" .. data.jobid) end)
+end
 
--- [2] MISSION EXECUTION
 local function fetchOrders()
     local success, response = pcall(function()
-        return HttpService:GetAsync(HUB_URL .. "/api/mission?userid=" .. MY_ID)
+        return HttpService:GetAsync(HUB_URL .. "/api/mission?userid=" .. tostring(Player.UserId))
     end)
-
-    if not success then return end
-    local orders = HttpService:JSONDecode(response)
-
-    if orders.action == "EXECUTE" then
-        if orders.mission == "HUNT" then
-            -- HUNT LOGIC: Jump to the target's server
-            TeleportService:TeleportToPlaceInstance(PLACE_ID, orders.target_jobid, Players.LocalPlayer)
-        elseif orders.mission == "REST" then
-            -- REST LOGIC: Stay or go to Homebase
-            print("LANA: Resting the Fool.")
+    if success then
+        local orders = HttpService:JSONDecode(response)
+        if orders.action == "EXECUTE" and orders.mission == "HUNT" then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, orders.target_jobid, Player)
         end
     end
 end
 
-if not game:IsLoaded() then game.Loaded:Wait() end
-task.wait(5)
-
-while true do
-    fetchOrders()
-    task.wait(60) -- Checks for new missions every minute
-end
+task.spawn(function()
+    while true do
+        sendPing()
+        fetchOrders()
+        task.wait(30)
+    end
+end)
