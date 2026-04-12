@@ -11,6 +11,7 @@ local MY_ID = tostring(Players.LocalPlayer.UserId)
 local CURRENT_JOB = tostring(game.JobId)
 local PLACE_ID = game.PlaceId
 
+-- Local Watchdog Heartbeat
 task.spawn(function()
     while true do
         pcall(function() game:HttpGet(SUB_HUB_URL .. "?hopper_id=" .. MY_ID) end)
@@ -21,6 +22,7 @@ end)
 if not game:IsLoaded() then game.Loaded:Wait() end
 task.wait(5)
 
+-- Fetch Orders
 local requestUrl = HUB_URL .. "?userid=" .. MY_ID .. "&current_jobid=" .. CURRENT_JOB
 local success, response = pcall(function() return game:HttpGet(requestUrl) end)
 
