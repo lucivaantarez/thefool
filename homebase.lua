@@ -1,4 +1,4 @@
-local HUB_URL = "https://your-master-hub.trycloudflare.com" 
+local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com" 
 local LOCAL_HUB = "http://127.0.0.1:5000" 
 
 local HttpService = game:GetService("HttpService")
