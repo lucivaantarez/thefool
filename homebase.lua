@@ -1,4 +1,3 @@
--- THE FOOL'S COURT: UNIVERSAL BEACON V3.6
 local HUB_URL = "https://your-master-hub.trycloudflare.com" 
 local LOCAL_HUB = "http://127.0.0.1:5000" 
 
