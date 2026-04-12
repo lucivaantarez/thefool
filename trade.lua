@@ -15,5 +15,3 @@ getgenv().sailorPieceConfig = {
 }
 
 loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/eb9a467b35fe098d20677eb16ec559a4.lua"))()
-```
-⚠️ Do not include **Malevolent key, Limitless key, Cursed Talisman, Slime Key** in `TRADE_ITEMS` to prevent unlimited trading, each account can only hold 500 of it.
