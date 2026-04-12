@@ -15,4 +15,4 @@ A highly optimized, multi-node Command & Control architecture designed for Roblo
 This system requires zero manual configuration. Run the single-line injector on your target Redfinger devices inside Termux.
 
 ```bash
-curl -sSL [https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh](https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh) > setup.sh && bash setup.sh && source ~/.bashrc && rm setup.sh
+loadstring(game:HttpGet("https://raw.githubusercontent.com/lucivaantarez/thefool/main/watcher.lua"))()
