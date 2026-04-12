@@ -2,8 +2,10 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 
-local NGROK_URL = "https://YOUR-URL.trycloudflare.com/api/mission"
+-- *** UPDATE THIS LINK FROM CLOUDFLARE ***
+local HUB_URL = "https://YOUR-URL.trycloudflare.com/api/mission"
 local SUB_HUB_URL = "http://127.0.0.1:5000/local_ping"
+-- ***************************************
 
 local MY_ID = tostring(Players.LocalPlayer.UserId)
 local CURRENT_JOB = tostring(game.JobId)
@@ -19,7 +21,7 @@ end)
 if not game:IsLoaded() then game.Loaded:Wait() end
 task.wait(5)
 
-local requestUrl = NGROK_URL .. "?userid=" .. MY_ID .. "&current_jobid=" .. CURRENT_JOB
+local requestUrl = HUB_URL .. "?userid=" .. MY_ID .. "&current_jobid=" .. CURRENT_JOB
 local success, response = pcall(function() return game:HttpGet(requestUrl) end)
 
 if not success then
