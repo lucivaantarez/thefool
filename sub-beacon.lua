@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 -- *** UPDATE THIS LINK FROM CLOUDFLARE ***
-local HUB_URL = "https://YOUR-URL.trycloudflare.com/api/ping"
+local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com"
 -- ***************************************
 
 if not game:IsLoaded() then game.Loaded:Wait() end
