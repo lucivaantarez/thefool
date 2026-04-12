@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 
 -- *** UPDATE THIS LINK FROM CLOUDFLARE ***
-local HUB_URL = "https://YOUR-URL.trycloudflare.com/api/mission"
+local HUB_URL = "https://appropriations-supervisor-knight-luxury.trycloudflare.com"
 local SUB_HUB_URL = "http://127.0.0.1:5000/local_ping"
 -- ***************************************
 
