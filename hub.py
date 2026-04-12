@@ -1,261 +1,142 @@
-import os
-import time
-import json
-import sqlite3
-import threading
-import requests
-import subprocess
-from fastapi import FastAPI, HTTPException, Header
-import uvicorn
+import os, sys, json, time, sqlite3, threading
+from collections import deque
+from fastapi import FastAPI
 from pydantic import BaseModel
+import uvicorn
+import logging
 
-# ==========================================
-# 1. THE CONFIG WIZARD & WEBHOOKS
-# ==========================================
-CONFIG_FILE = "config.json"
+logging.getLogger("uvicorn").setLevel(logging.CRITICAL)
+logging.getLogger("uvicorn.access").setLevel(logging.CRITICAL)
 
-def load_or_create_config():
-    if not os.path.exists(CONFIG_FILE):
-        os.system("clear")
-        print("======================================")
-        print("      INITIALIZING THE FOOL'S COURT   ")
-        print("======================================")
-        webhook = input("> Enter Discord Webhook URL: ")
-        discord_id = input("> Enter your Discord User ID: ")
-        api_key = input("> Create a Secret API Key for Bots: ")
-        
-        # --- ROBLOX PACKAGE SCANNER ---
-        print("\n> Scanning Android for Roblox packages...")
-        packages = []
-        try:
-            output = subprocess.check_output("pm list packages | grep 'com.roblox.'", shell=True, text=True)
-            packages = [line.split(':')[1].strip() for line in output.strip().split('\n') if line]
-        except Exception:
-            pass
-
-        target_pkg = "com.roblox.client" 
-        
-        if packages:
-            print("\n[!] Found the following Roblox versions:")
-            for i, pkg in enumerate(packages):
-                print(f"  {i+1}. {pkg}")
-            
-            choice = input(f"\n> Choose package for auto-launch (1-{len(packages)}): ")
-            try:
-                target_pkg = packages[int(choice)-1]
-            except (ValueError, IndexError):
-                print(f"[!] Invalid choice. Defaulting to {packages[0]}")
-                target_pkg = packages[0]
-        else:
-            print("\n[!] No Roblox packages detected.")
-            target_pkg = input("> Enter package name manually: ")
-
-        print(f"\n[+] Selected Package: {target_pkg}")
-
-        # Inject the 'hunt' command into Termux
-        try:
-            alias_cmd = f"alias hunt='am force-stop {target_pkg} && sleep 2 && monkey -p {target_pkg} -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1 && echo \"[+] Launched {target_pkg}\"'"
-            os.system(f"echo \"{alias_cmd}\" >> ~/.bashrc")
-            print("[+] 'hunt' command installed to Termux!")
-        except Exception:
-            print("[!] Could not auto-install 'hunt' alias.")
-
-        config_data = {
-            "webhook_url": webhook,
-            "discord_id": discord_id,
-            "api_key": api_key,
-            "max_retries": 5,
-            "roblox_package": target_pkg
-        }
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(config_data, f, indent=4)
-        
-        print("\n[+] Config saved! Starting Hub...\n")
-        
-        if webhook:
-            try:
-                requests.post(webhook, json={"content": "🃏 **The Fool's Court is online.** System linked."})
-            except:
-                pass
-        time.sleep(2)
-        return config_data
-    
-    with open(CONFIG_FILE, "r") as f:
-        return json.load(f)
-
-config = load_or_create_config()
-
-def send_discord_alert(message):
-    if not config["webhook_url"]: return
-    payload = {"content": f"<@{config['discord_id']}> {message}"}
-    try:
-        requests.post(config["webhook_url"], json=payload, timeout=3)
-    except: pass
-
-# ==========================================
-# 2. DATABASE & STARTUP WIPE
-# ==========================================
-def init_db():
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS beacons (userid TEXT PRIMARY KEY, jobid TEXT, last_ping REAL)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS stats (id INTEGER PRIMARY KEY, status TEXT, trades_done INTEGER, fails INTEGER, current_jobid TEXT)''')
-    c.execute("INSERT OR IGNORE INTO stats (id, status, trades_done, fails, current_jobid) VALUES (1, 'IDLE', 0, 0, 'None')")
-    c.execute("UPDATE stats SET status = 'IDLE', current_jobid = 'None' WHERE id = 1")
-    conn.commit()
-    conn.close()
-
-init_db()
-START_TIME = time.time()
-
-# ==========================================
-# 3. FASTAPI C2 SERVER
-# ==========================================
 app = FastAPI()
+CONFIG_FILE = "config.json"
+DB_FILE = "swarm.db"
 
-def verify_token(authorization: str = Header(None)):
-    if not authorization or authorization != f"Bearer {config['api_key']}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+config = {
+    "target_timer": 300, 
+    "base_timer": 1800, 
+    "army_per_device": 2, 
+    "primary_base": "https://www.roblox.com/share?code=...", 
+    "secondary_base": "None"
+}
+
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, "r") as f: config.update(json.load(f))
+else:
+    with open(CONFIG_FILE, "w") as f: json.dump(config, f, indent=4)
+
+def save_config():
+    with open(CONFIG_FILE, "w") as f: json.dump(config, f, indent=4)
+
+conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+cursor = conn.cursor()
+cursor.executescript("""
+    CREATE TABLE IF NOT EXISTS targets (userid TEXT PRIMARY KEY, jobid TEXT, last_seen REAL);
+    CREATE TABLE IF NOT EXISTS anchors (role TEXT PRIMARY KEY, jobid TEXT, players INTEGER);
+    CREATE TABLE IF NOT EXISTS hoppers (userid TEXT PRIMARY KEY, assigned_jobid TEXT, mission TEXT);
+""")
+conn.commit()
+
+comm_log = deque(maxlen=10)
+def add_log(msg): comm_log.append(msg)
+
+start_time = time.time()
+PURPLE, WHITE, CYAN, RED, RESET = '\033[95m', '\033[97m', '\033[96m', '\033[91m', '\033[0m'
 
 class PingData(BaseModel):
     userid: str
     jobid: str
+    role: str
+    players: int = 0
 
 @app.post("/api/ping")
-def farm_ping(data: PingData, authorization: str = Header(None)):
-    verify_token(authorization)
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    c.execute("REPLACE INTO beacons (userid, jobid, last_ping) VALUES (?, ?, ?)", (data.userid, data.jobid, time.time()))
+def handle_ping(data: PingData):
+    now = time.time()
+    if data.role in ["PRIMARY", "SECONDARY"]:
+        cursor.execute("REPLACE INTO anchors (role, jobid, players) VALUES (?, ?, ?)", (data.role, data.jobid, data.players))
+    elif data.role == "TARGET":
+        cursor.execute("REPLACE INTO targets (userid, jobid, last_seen) VALUES (?, ?, ?)", (data.userid, data.jobid, now))
     conn.commit()
-    conn.close()
-    return {"status": "ok"}
+    return {"status": "Logged"}
 
-@app.get("/api/get_target")
-def get_target(authorization: str = Header(None)):
-    verify_token(authorization)
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    
-    if time.time() - START_TIME < 180:
-        return {"jobid": "WAITING_FOR_BEACONS"}
+@app.get("/api/mission")
+def get_mission(userid: str, current_jobid: str):
+    cursor.execute("SELECT userid, jobid FROM targets ORDER BY last_seen ASC LIMIT 1")
+    target = cursor.fetchone()
+    short_user = userid[:6]
+    if target:
+        add_log(f"> Hopper_{short_user} : Hunting in Server [{target[1][:8]}]")
+        return {"action": "EXECUTE", "mission": "HUNT", "target_userid": target[0], "dwell_time": config["target_timer"]}
+    else:
+        add_log(f"> Hopper_{short_user} : Resting at Homebase.")
+        return {"action": "EXECUTE", "mission": "REST", "target_userid": "null", "dwell_time": config["base_timer"]}
 
-    cutoff = time.time() - 120 
-    c.execute("SELECT jobid FROM beacons WHERE last_ping > ? ORDER BY last_ping ASC LIMIT 1", (cutoff,))
-    row = c.fetchone()
-    
-    if row:
-        target = row[0]
-        c.execute("UPDATE stats SET status = 'HOPPING', current_jobid = ? WHERE id = 1", (target,))
-        conn.commit()
-        conn.close()
-        return {"jobid": target}
-    
-    conn.close()
-    return {"jobid": "None"}
+def clear_screen(): os.system('clear')
 
-@app.post("/api/trade_success")
-def trade_success(authorization: str = Header(None)):
-    verify_token(authorization)
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    c.execute("UPDATE stats SET trades_done = trades_done + 1, status = 'IDLE', current_jobid = 'None' WHERE id = 1")
-    conn.commit()
-    conn.close()
-    return {"status": "ok"}
+def draw_static_menu():
+    clear_screen()
+    print(PURPLE + "+===================================================+\n|                                                   |\n|          T H E  F O O L ' S  C O U R T            |\n|                                                   |\n+===================================================+" + RESET)
+    print(WHITE + f"|  SYSTEM STATUS          :  {CYAN}[ OFFLINE ]{WHITE}            |\n+---------------------------------------------------+")
+    print(f"|  [1] The Fool's Hop     :  {config['target_timer']} seconds")
+    print(f"|  [2] Fool's Rest Time   :  {config['base_timer']} seconds")
+    print(f"|  [3] Army/Device        :  {config['army_per_device']}")
+    print(f"|  [4] Primary Homebase   :  {config['primary_base'][:20]}...")
+    print(f"|  [5] Secondary Homebase :  {config['secondary_base'][:20]}...")
+    print(PURPLE + "+===================================================+" + RESET)
+    print(WHITE + "|  [E] Configuration                                |\n|  [S] Awaken The Fool                              |\n|  [Q] Kill The Fool                                |\n" + PURPLE + "+---------------------------------------------------+" + RESET)
 
-@app.post("/api/trade_fail")
-def trade_fail(jobid: str, authorization: str = Header(None)):
-    verify_token(authorization)
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    c.execute("UPDATE stats SET fails = fails + 1, status = 'IDLE', current_jobid = 'None' WHERE id = 1")
-    conn.commit()
-    conn.close()
-    send_discord_alert(f"[FAILED HOP] Skipped JobID: `{jobid[:12]}...`")
-    return {"status": "ok"}
-
-@app.get("/api/dashboard_data")
-def dashboard_data():
-    conn = sqlite3.connect("farm_hub.db")
-    c = conn.cursor()
-    c.execute("SELECT status, trades_done, fails, current_jobid FROM stats WHERE id = 1")
-    stats = c.fetchone()
-    
-    cutoff = time.time() - 120
-    c.execute("SELECT count(*) FROM beacons WHERE last_ping > ?", (cutoff,))
-    active = c.fetchone()[0]
-    
-    c.execute("SELECT count(*) FROM beacons")
-    total = c.fetchone()[0]
-    conn.close()
-    
-    return {
-        "status": stats[0], "target": stats[3], "active_beacons": active, 
-        "total_beacons": total, "trades": stats[1], "fails": stats[2]
-    }
-
-# ==========================================
-# 4. BACKGROUND TASKS
-# ==========================================
-def garbage_collector():
+def interactive_menu():
     while True:
-        time.sleep(300)
-        if time.time() - START_TIME < 180: continue 
-        conn = sqlite3.connect("farm_hub.db")
-        c = conn.cursor()
-        dead_cutoff = time.time() - 86400 
-        c.execute("DELETE FROM beacons WHERE last_ping < ?", (dead_cutoff,))
-        conn.commit()
-        conn.close()
+        draw_static_menu()
+        choice = input(WHITE + "Select an action: " + RESET).strip().upper()
+        if choice == 'Q': sys.exit(0)
+        elif choice == 'S': break 
+        elif choice == 'E':
+            opt = input(CYAN + "Which setting to edit (1-5)? " + RESET)
+            if opt == '1': config['target_timer'] = int(input("New Hop Time (seconds): "))
+            if opt == '2': config['base_timer'] = int(input("New Rest Time (seconds): "))
+            if opt == '3': config['army_per_device'] = int(input("New Army/Device: "))
+            if opt == '4': config['primary_base'] = input("New Primary Base Link: ").strip()
+            if opt == '5': config['secondary_base'] = input("New Secondary Base Link: ").strip()
+            save_config()
 
-threading.Thread(target=garbage_collector, daemon=True).start()
+def get_uptime():
+    h, rem = divmod(int(time.time() - start_time), 3600)
+    m, s = divmod(rem, 60)
+    return f"{h:02d}h {m:02d}m {s:02d}s"
 
-def draw_dashboard():
+def draw_live_dashboard():
     while True:
-        try:
-            conn = sqlite3.connect("farm_hub.db")
-            c = conn.cursor()
-            c.execute("SELECT status, trades_done, fails, current_jobid FROM stats WHERE id = 1")
-            stats = c.fetchone()
-            cutoff = time.time() - 120
-            c.execute("SELECT count(*) FROM beacons WHERE last_ping > ?", (cutoff,))
-            active = c.fetchone()[0]
-            c.execute("SELECT count(*) FROM beacons")
-            total = c.fetchone()[0]
-            conn.close()
-
-            uptime_seconds = int(time.time() - START_TIME)
-            hours, remainder = divmod(uptime_seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            uptime_str = f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
-
-            os.system('clear')
-            print("======================================")
-            print("        🃏 THE FOOL'S COURT           ")
-            print("======================================")
-            print(" [ SYSTEM ]")
-            if time.time() - START_TIME < 180:
-                print(f" Mode       : GRACE PERIOD (Healing)")
-            else:
-                print(f" Mode       : ACTIVE")
-            print(f" Uptime     : {uptime_str}")
-            print(f" Override   : None\n")
-            print(" [ THE HUNTER ]")
-            print(f" Status     : {stats[0]}")
-            tgt = stats[3]
-            print(f" Target ID  : {tgt[:12]}..." if tgt != "None" else " Target ID  : None")
-            print("\n [ THE NETWORK ]")
-            print(f" Beacons    : {active} / {total} Online")
-            print(f" Success    : {stats[1]}")
-            print(f" Fail       : {stats[2]}\n")
-            print(" [ LOGS ]")
-            print(" > System synced.")
-            print("======================================")
-        except Exception: pass
         time.sleep(1)
+        clear_screen()
+        cursor.execute("SELECT COUNT(*) FROM targets")
+        active_universe = cursor.fetchone()[0]
+        print(PURPLE + "+===================================================+\n|                                                   |\n|          T H E  F O O L ' S  C O U R T            |\n|                                                   |\n+===================================================+" + RESET)
+        print(WHITE + f"|  SYSTEM STATUS          :  {CYAN}[ AWAKENED ]{WHITE}           |\n|  NETWORK UPTIME         :  {CYAN}{get_uptime():<21}{WHITE}|\n|  ACTIVE UNIVERSE        :  {CYAN}{active_universe:<4} TARGETS{WHITE}          |\n" + PURPLE + "+---------------------------------------------------+" + RESET)
+        print(WHITE + "|  [ LIVE COMM LINK ] (Last 10 Events)              |")
+        log_list = list(comm_log)
+        for i in range(10): print(f"| {log_list[i][:45]:<49} |" if i < len(log_list) else f"| {' ':<49} |")
+        print(PURPLE + "+===================================================+" + RESET)
+        print(WHITE + "Type " + CYAN + "'s'" + WHITE + " and press [ENTER] to Kill The Fool." + RESET)
 
-threading.Thread(target=draw_dashboard, daemon=True).start()
+def listen_for_kill():
+    while True:
+        if input().strip().lower() == 's':
+            print(RED + "\n[SYSTEM] Assassinating the Hub. Saving Data..." + RESET)
+            os._exit(0)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="critical")
+    interactive_menu()
+    clear_screen()
+    print(PURPLE + "[SYSTEM] Opening the Void... Awaken The Fool." + RESET)
+    
+    if config.get("primary_base") and config["primary_base"] != "None":
+        os.system(f'am start -a android.intent.action.VIEW -d "{config["primary_base"]}" com.roblox.client > /dev/null 2>&1')
+        time.sleep(3) 
+        
+    if config.get("secondary_base") and config["secondary_base"] != "None":
+        os.system(f'am start -a android.intent.action.VIEW -d "{config["secondary_base"]}" com.dualspace.roblox > /dev/null 2>&1')
+
+    threading.Thread(target=draw_live_dashboard, daemon=True).start()
+    threading.Thread(target=listen_for_kill, daemon=True).start()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
