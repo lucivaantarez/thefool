@@ -1,7 +1,9 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
+-- *** UPDATE THIS LINK ***
 local NGROK_URL = "https://YOUR-URL.trycloudflare.com/api/ping"
+-- ************************
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 task.wait(5)
