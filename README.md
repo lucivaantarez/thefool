@@ -1,18 +1,55 @@
-# The Fool's Court: Swarm Architecture
+# LANA SYSTEM ARCHITECTURE: THE FOOL'S COURT V3.5
+--------------------------------------------------
+A centralized command suite for automated Roblox infrastructure, 
+featuring Sentinel auto-relaunch, dynamic window bounds (1x1/1x2), 
+and package-agnostic identity mapping.
 
-A highly optimized, multi-node Command & Control architecture designed for Roblox automation across Redfinger cloud environments (Android 10/Termux). It utilizes a centralized API hub to route worker nodes (Hoppers) to designated targets in real-time, completely bypassing traditional executor limitations.
+### [1] INITIALIZATION (THE INJECTOR)
+Run this command in a fresh Termux session to install dependencies 
+and pull the latest unified codebase.
 
-## Core Features
-* **Zero-Touch Updates:** Workers pull their routing logic directly from this repository dynamically.
-* **Hardware Watchdog:** Sub-Hubs monitor local Android memory limits and forcefully reboot frozen Roblox packages.
-* **Intelligent Routing:** Eliminates API rate limits via the SQLite SQLite target/rest queue.
-* **Cloudflare Integrated:** Natively uses Cloudflare Quick Tunnels for external API exposure.
+curl -sL https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh | bash
 
----
+--------------------------------------------------
 
-## 1. Installation
+### [2] PUBLIC ACCESS (CLOUDFLARE TUNNEL)
+Run this in a SEPARATE Termux tab while the Hub or Swarm is active.
+Copy the ".trycloudflare.com" link generated to your Lua scripts.
 
-This system requires zero manual configuration. Run the single-line injector on your target Redfinger devices inside Termux.
+# For Master Hub (Master Redfinger)
+cloudflared tunnel --url http://127.0.0.1:8000
 
-```bash
-curl -sSL https://raw.githubusercontent.com/lucivaantarez/thefool/main/setup.sh > setup.sh && bash setup.sh && source ~/.bashrc && rm setup.sh
+# For Swarm Worker (Sub-Redfinger)
+cloudflared tunnel --url http://127.0.0.1:5000
+
+--------------------------------------------------
+
+### [3] COMMAND REFERENCE
+| Action                  | Command                                           |
+|-------------------------|---------------------------------------------------|
+| Awakening the Court     | fool                                              |
+| Engaging the Swarm      | swarm                                             |
+| Force Refresh Code      | cd ~/thefool && git pull                          |
+| Clean Re-Install        | rm -rf ~/thefool && fool                          |
+| Install Cloudflared     | pkg install cloudflared                           |
+
+--------------------------------------------------
+
+### [4] LUA INTEGRATION
+Paste your Cloudflare URL into the universal beacon script inside 
+your Roblox executor.
+
+local HUB_URL = "https://your-unique-link.trycloudflare.com"
+
+--------------------------------------------------
+
+### [5] OPERATIONAL WORKFLOW
+1. DIRECTIVE: Launch 'fool' on your Master Hub. 
+2. ARCHITECT: Set Window Layout (1x1/1x2) and search filter (com.lana).
+3. AWAKEN: Press 'S' to deploy the swarm and start the Sentinel watcher.
+4. BRIDGE: Start the Cloudflare tunnel in Tab 2 to link your Roblox accounts.
+5. MONITOR: Watch 'LANA LIVE INTERCEPT' for real-time mission updates.
+
+--------------------------------------------------
+[ SYSTEM STATUS: READY ]
+[ ARCHITECTURE: UNIFIED V3.5 ]
