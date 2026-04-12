@@ -1,4 +1,4 @@
-import os, sys, json, time, sqlite3, threading
+Iimport os, sys, json, time, sqlite3, threading
 from collections import deque
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,8 +14,8 @@ DB_FILE = "swarm.db"
 G, C, W, R, Y, X = '\033[1;32m', '\033[1;36m', '\033[1;37m', '\033[1;31m', '\033[1;33m', '\033[0m'
 
 config = {
-    "target_timer": 300, "base_timer": 1800, "primary_base": "None", 
-    "search_filter": "com.lana", "active_pkgs": ["com.roblox.client"],
+    "target_timer": 300, "base_timer": 1800, "primary_base": "None",
+    "search_filter": "com.roblox", "active_pkgs": ["com.roblox.client"],
     "window_mode": "1x1", "relaunch_enabled": True
 }
 
@@ -74,11 +74,17 @@ def get_bounds(index):
 
 def launch_instance(pkg, index):
     bounds = get_bounds(index)
-    link = config["primary_base"]
-    if link == "None": return
-    cmd = f'am start --activity-brought-to-front -a android.intent.action.VIEW -d "{link}" {pkg}'
+    link = config.get("primary_base", "None")
+    
+    # If no link, just open the app. If link exists, force it into the Roblox Activity.
+    if link == "None" or link == "":
+        cmd = f'am start -n {pkg}/com.roblox.client.ActivityMain'
+    else:
+        cmd = f'am start -n {pkg}/com.roblox.client.ActivityMain -a android.intent.action.VIEW -d "{link}"'
+        
     if bounds and config["window_mode"] != "Full":
-        cmd = f'am start --activity-brought-to-front --bounds "{bounds}" -a android.intent.action.VIEW -d "{link}" {pkg}'
+        cmd = cmd.replace('am start', f'am start --bounds "{bounds}"')
+        
     os.system(f'{cmd} > /dev/null 2>&1')
     anchor_health[pkg] = time.time()
 
@@ -118,14 +124,14 @@ def draw_live():
         time.sleep(1)
         draw_header("ACTIVE")
         cursor.execute("SELECT COUNT(*) FROM targets")
-        print(f" {W}[{X}{C} TARGETS {X}{W}]{X} : {G}{cursor.fetchone()[0]} Signals\n {W}[{X}{C} ANCHORS {X}{W}]{X} : {G}{len(config['active_pkgs'])} Protected\n {W}--------------------------------------------------{X}\n {C}LANA LIVE INTERCEPT:{X}")
+        print(f" {W}[{X}{C} TARGETS {X}{W}]{X} : {G}{cursor.fetchone()[0]} Signals{X}\n {W}[{X}{C} ANCHORS {X}{W}]{X} : {G}{len(config['active_pkgs'])} Protected{X}\n {W}--------------------------------------------------{X}\n {C}LANA LIVE INTERCEPT:{X}")
         for log in list(comm_log): print(f" {W}>{X} {log}")
         print(f"\n {W}Press {X}{R}'s'{X}{W} + Enter to Terminate.{X}")
 
 def interactive_menu():
     while True:
         draw_header()
-        print(f" {W}--------------------------------------------------{X}\n {W}[{X}{C} 1 {X}{W}]{X} The Fool's Hop   : {W}{config['target_timer']}s{X}\n {W}[{X}{C} 2 {X}{W}]{X} Fool's Rest Time : {W}{config['base_timer']}s{X}\n {W}[{X}{C} 3 {X}{W}]{X} Search Filter    : {W}{config['search_filter']}{X}\n {W}[{X}{C} 4 {X}{W}]{X} Active Anchors   : {W}{len(config['active_pkgs'])}{X}\n {W}[{X}{C} 5 {X}{W}]{X} Window Layout    : {W}{config['window_mode']}{X}\n {W}[{X}{C} 6 {X}{W}]{X} Homebase Link    : {W}{config['primary_base'][:10]}...{X}\n {W}--------------------------------------------------{X}\n {W}[{X}{G} S {X}{W}]{X} {G}AWAKEN THE FOOL{X}\n {W}[{X}{R} Q {X}{W}]{X} {R}TERMINATE{X}\n")
+        print(f" {W}--------------------------------------------------{X}\n {W}[{X}{C} 1 {X}{W}]{X} The Fool's Hop   : {W}{config['target_timer']}s{X}\n {W}[{X}{C} 2 {X}{W}]{X} Fool's Rest Time : {W}{config['base_timer']}s{X}\n {W}[{X}{C} 3 {X}{W}]{X} Search Filter    : {W}{config['search_filter']}{X}\n {W}[{X}{C} 4 {X}{W}]{X} Active Anchors   : {W}{len(config['active_pkgs'])}{X}\n {W}[{X}{C} 5 {X}{W}]{X} Window Layout    : {W}{config['window_mode']}{X}\n {W}[{X}{C} 6 {X}{W}]{X} Homebase Link    : {W}{config.get('primary_base', 'None')[:20]}...{X}\n {W}--------------------------------------------------{X}\n {W}[{X}{G} S {X}{W}]{X} {G}AWAKEN THE FOOL{X}\n {W}[{X}{R} Q {X}{W}]{X} {R}TERMINATE{X}\n")
         cmd = input(f" {G}Directive:{X} ").strip().upper()
         if cmd == 'S': break
         if cmd == 'Q': sys.exit()
