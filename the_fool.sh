@@ -381,7 +381,7 @@ screen_universe() {
         done
         at 24 0 "${GREEN}  ✓  Test grid launched.             ${R}"
         sleep 1 ;;
-      ""| ) break ;;
+      "" | " ") break ;;
     esac
   done
 }
