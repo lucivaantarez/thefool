@@ -10,7 +10,7 @@ set -euo pipefail
 
 # ── CONSTANTS ────────────────────────────────────────────────────────
 readonly VERSION="1.0.0"
-readonly GITHUB_RAW_URL="https://raw.githubusercontent.com/lucivaantarez/the-fool/main/the_fool.sh"
+readonly GITHUB_RAW_URL="https://raw.githubusercontent.com/lucivaantarez/thefool/main/the_fool.sh"
 readonly API_ENDPOINT="https://universe-vault.vercel.app/api/links"
 readonly API_AUTH_TOKEN="fool-secret-token-2025"
 readonly SELF_PATH="$(realpath "$0")"
