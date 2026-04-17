@@ -62,13 +62,13 @@ WHITE=$'\033[97m'
 # ════════════════════════════════════════════════════════════════════
 
 tui_init() {
+  stty sane 2>/dev/null || true
   tput civis 2>/dev/null || true
-  stty -echo 2>/dev/null || true
 }
 
 tui_restore() {
-  tput cvvis 2>/dev/null || true
-  stty echo 2>/dev/null || true
+  tput cnorm 2>/dev/null || true
+  stty sane 2>/dev/null || true
   echo ""
 }
 
