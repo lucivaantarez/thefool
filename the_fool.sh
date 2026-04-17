@@ -14,7 +14,7 @@ readonly GITHUB_RAW_URL="https://raw.githubusercontent.com/lucivaantarez/thefool
 readonly API_ENDPOINT="https://universe-vault.vercel.app/api/links"
 readonly API_AUTH_TOKEN="fool-secret-token-2025"
 readonly SELF_PATH="$(realpath "$0")"
-readonly STATE_DIR="/tmp/fool_state"
+readonly STATE_DIR="${HOME}/.fool_state"
 readonly MAX_LINE_WIDTH=72
 
 # ── CONFIG (mutable via lobby) ────────────────────────────────────────
@@ -62,7 +62,7 @@ WHITE=$'\033[97m'
 # ════════════════════════════════════════════════════════════════════
 
 tui_init() {
-  tput civis 2>/dev/null || true   # hide cursor
+  tput civis 2>/dev/null || true
   stty -echo 2>/dev/null || true
 }
 
