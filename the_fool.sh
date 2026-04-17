@@ -6,7 +6,7 @@
 #  Self-updating via GitHub. Deploy: curl -s <RAW_URL> | bash
 # ════════════════════════════════════════════════════════════════════
 
-set -euo pipefail
+set -uo pipefail
 
 # ── CONSTANTS ────────────────────────────────────────────────────────
 readonly VERSION="1.0.0"
@@ -63,13 +63,11 @@ WHITE=$'\033[97m'
 
 tui_init() {
   tput civis 2>/dev/null || true   # hide cursor
-  tput smcup 2>/dev/null || true   # save screen
   stty -echo 2>/dev/null || true
 }
 
 tui_restore() {
   tput cvvis 2>/dev/null || true
-  tput rmcup 2>/dev/null || true
   stty echo 2>/dev/null || true
   echo ""
 }
