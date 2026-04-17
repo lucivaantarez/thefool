@@ -63,11 +63,9 @@ WHITE=$'\033[97m'
 
 tui_init() {
   stty sane 2>/dev/null || true
-  tput civis 2>/dev/null || true
 }
 
 tui_restore() {
-  tput cnorm 2>/dev/null || true
   stty sane 2>/dev/null || true
   echo ""
 }
@@ -240,10 +238,8 @@ screen_army() {
     at 9  0 "${DUST}${BOLD}  ◈  CHOOSE THE ARMY — Node Configuration${R}"
     at 11 0 "${WHITE}  Enter base package name ${GRAY}(e.g. com.roblox, com.delta)${R}${WHITE}:${R} "
     tput cup 11 50
-    tput cnorm
     local input=""
     read -r input
-    tput civis
 
     if [[ -z "$input" ]]; then continue; fi
 
@@ -266,10 +262,8 @@ screen_army() {
     local sel_row=$((14 + ${#packages[@]} + 1))
     at "$sel_row" 0 "${WHITE}  Select clones to bind ${GRAY}[1 2 3 4 / all]${R}${WHITE}:${R} "
     tput cup "$sel_row" 45
-    tput cnorm
     local selection=""
     read -r selection
-    tput civis
 
     NODES=()
     if [[ "$selection" == "all" ]]; then
@@ -355,10 +349,8 @@ screen_universe() {
 
     at 24 0 "${WHITE}  Choice:${R} "
     tput cup 24 11
-    tput cnorm
     local key=""
     read -r -n1 key
-    tput civis
     key="${key,,}"
 
     case "$key" in
@@ -417,33 +409,21 @@ screen_lobby() {
     hline 24 "─" 70
     at 25 0 "${WHITE}  Command:${R} "
     tput cup 25 12
-    tput cnorm
     local key=""
     read -r -n1 key
-    tput civis
 
     case "$key" in
       a)
-        tput cup 25 0; printf '  Cache clear (5-60 min): '; tput cnorm
-        read -r val; tput civis
         if [[ "$val" =~ ^[0-9]+$ ]] && (( val >= 5 && val <= 60 )); then
           CACHE_CLEAR_INTERVAL=$val; fi ;;
       b)
-        tput cup 25 0; printf '  Rejoin interval (sec): '; tput cnorm
-        read -r val; tput civis
         if [[ "$val" =~ ^[0-9]+$ ]]; then REJOIN_INTERVAL=$val; fi ;;
       c)
-        tput cup 25 0; printf '  Max fails: '; tput cnorm
-        read -r val; tput civis
         if [[ "$val" =~ ^[0-9]+$ ]]; then MAX_FAILS=$val; fi ;;
       d)
-        tput cup 25 0; printf '  Launch delay (15-120s): '; tput cnorm
-        read -r val; tput civis
         if [[ "$val" =~ ^[0-9]+$ ]] && (( val >= 15 && val <= 120 )); then
           LAUNCH_DELAY=$val; fi ;;
       e)
-        tput cup 25 0; printf '  Hop interval (180-900s): '; tput cnorm
-        read -r val; tput civis
         if [[ "$val" =~ ^[0-9]+$ ]] && (( val >= 180 && val <= 900 )); then
           HOP_INTERVAL=$val; fi ;;
       f) AUTO_KILL=$(( 1 - AUTO_KILL )) ;;
