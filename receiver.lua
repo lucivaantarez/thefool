@@ -1,8 +1,17 @@
+-- Global Configs
 script_key="YrMGlHVZJYWpvtBaeKtZJOAtEBmcQbkQ";
 setfpscap(10)
 
 getgenv().sailorPieceConfig = {  
-    KICK_ITEM_LIMIT = { ["Secret Chest"] = 99999999999999, ["Cosmetic Chest"] = 999999999999999, ["Aura Chest"] = 9999999999999999 }
+    KICK_ITEM_LIMIT = { ["Secret Chest"] = 9999, ["Cosmetic Chest"] = 9999, ["Aura Chest"] = 9999 }
 }
 
-loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/d63b8de750f34c5a2bc6920f3849c318.lua"))()
+-- Run First Script in its own thread
+task.spawn(function()
+    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/d63b8de750f34c5a2bc6920f3849c318.lua"))()
+end)
+
+-- Run Second Script in its own thread
+task.spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/FnDXueyi/list/refs/heads/main/game"))()
+end)
